@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import User from "../models/User.model.js";
 
-const verifyToken = async (req, res, next) => {
+export const verifyToken = async (req, res, next) => {
   try {
     const accessToken = req.cookies.accessToken;
     if (!accessToken) {
@@ -28,4 +28,20 @@ const verifyToken = async (req, res, next) => {
   }
 };
 
-export default verifyToken;
+export const adminRoute = async (req, res, next) => {
+  try {
+    const user = req.user;
+    if (!user || user.role !== "admin") {
+      return res
+        .status(403)
+        .json({ success: false, message: "FAIL TO FIND THE USER❌" });
+    }
+    next();
+  } catch (error) {
+    console.error("SERVER ERROR IN ADMIN ROUTE", error.message);
+    return res.status(500).json({
+      success: false,
+      message: `Server error in admin route ❌ ${error.message}`,
+    });
+  }
+};
