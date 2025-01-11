@@ -1,4 +1,42 @@
+import { redis } from "../lib/redis.js";
 import User from "../models/User.model.js";
+import jwt from "jsonwebtoken";
+
+// generate Token
+const generateTokens = (userId) => {
+  const accessToken = jwt.sign({ userId }, process.env.ACESS_TOKEN_SECRET, {
+    expiresIn: "15m",
+  });
+  const refreshToken = jwt.sign({ userId }, process.env.REFRESH_TOKEN_SECRET, {
+    expiresIn: "7d",
+  });
+
+  return { accessToken, refreshToken };
+};
+// Only Refresh Token will be stored in Redis
+const storeRefreshToken = async (userId, refreshToken) => {
+  await redis.set(
+    `refresh_token:${userId}`,
+    refreshToken,
+    "EX",
+    7 * 24 * 60 * 60
+  );
+};
+// Store tokens in Cookies
+const setCookies = (res, accessToken, refreshToken) => {
+  res.cookie("accessToken", accessToken, {
+    httpOnly: true, // prevent XSS attacks, cross site scripting attack
+    secure: process.env.NODE_ENV == "production",
+    sameStie: "strict", //prevents CSRF attack, cross-site request forgery
+    maxAge: 15 * 60 * 1000, // 15 minutes
+  });
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true, // prevent XSS attacks, cross site scripting attack
+    secure: process.env.NODE_ENV == "production",
+    sameStie: "strict", //prevents CSRF attack, cross-site request forgery
+    maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+  });
+};
 
 export const signup = async (req, res) => {
   try {
@@ -26,9 +64,18 @@ export const signup = async (req, res) => {
     // 새로운 유저 생성
     const newUser = new User({ name, email, password });
     await newUser.save();
+    const { accessToken, refreshToken } = generateTokens(newUser._id);
+    // Store Token in UpStash
+    await storeRefreshToken(newUser._id, refreshToken);
+    setCookies(res, accessToken, refreshToken);
     return res.status(201).json({
       message: "NEW USER CREATED ✅",
-      newUser: newUser.toJson(),
+      user: {
+        id: newUser._id,
+        name: newUser.name,
+        emial: newUser.email,
+        role: newUser.role,
+      },
     });
   } catch (error) {
     console.error("FAILED TO CREATE NEW USER", error.message);
