@@ -69,7 +69,6 @@ export const signup = async (req, res) => {
     const { accessToken, refreshToken } = generateTokens(newUser._id);
     // Store Token in UpStash
     await storeRefreshToken(newUser._id, refreshToken);
-    storeRefreshToken(newUser._id, refreshToken);
     setCookies(res, accessToken, refreshToken);
     return res.status(201).json({
       message: "NEW USER CREATED ✅",
@@ -171,6 +170,7 @@ export const refreshAccessToken = async (req, res) => {
         .status(400)
         .json({ success: false, message: "CANNOT FIND THE VALID TOKEN" });
     }
+    // Compare Redis  & refresh Token
     if (storedToken !== refreshToken) {
       return res
         .status(401)

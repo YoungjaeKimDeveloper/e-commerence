@@ -75,10 +75,26 @@ export const createProduct = async (req, res) => {
 export const deleteProduct = async (req, res) => {
   try {
     const { id } = req.params;
-    const product = await Product.findById(id)
-    if(!product){
-      return res.status(400).json({success:false,message:"CANNOT FIND THE ITEM"})
+    const product = await Product.findById(id);
+
+    if (!product) {
+      return res
+        .status(400)
+        .json({ success: false, message: "CANNOT FIND THE ITEM" });
     }
+    // delete image from cloudinary
+    if (product.image) {
+      const publicId = product.image.split("/").pop().split(".")[0];
+      try {
+        await cloudinary.uploader.destroy(`products/${publicId}`);
+      } catch (error) {
+        console.error(
+          "FAILED TO DELETE PRODUCT IMAGE FROM CLOUDINARY❌",
+          error.message
+        );
+      }
+    }
+    // delete Item Image from Cloudinary
     await Product.findByIdAndDelete(id);
     return res.status(200).json({ success: false, message: "Item deleted ✅" });
   } catch (error) {
@@ -86,6 +102,37 @@ export const deleteProduct = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: `FAILED TO DELETED ITEM ❌ ${error.message}`,
+    });
+  }
+};
+
+export const getRecommendedProcuts = async (req, res) => {
+  try {
+    const products = await Product.aggregate([
+      {
+        $sample: { size: 3 },
+      },
+      {
+        $project: {
+          _id: 1,
+          name: 1,
+          description: 1,
+          image: 1,
+          price: 1,
+        },
+      },
+    ]);
+    return res
+      .status(200)
+      .json({
+        message: "FETCHED THE Reconnebded products successfully ✅",
+        products: products,
+      });
+  } catch (error) {
+    console.error("Failed to fetch the recommended Items", error.message);
+    return res.status(500).json({
+      success: false,
+      message: `Failed to fetch the items ${error.message}`,
     });
   }
 };
