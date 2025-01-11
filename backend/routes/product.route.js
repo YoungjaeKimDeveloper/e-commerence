@@ -1,7 +1,11 @@
 import express from "express";
-import { getAllProducts } from "../controllers/product.controller.js";
 const router = express.Router();
+// Inner Route
+import { getAllProducts } from "../controllers/product.controller.js";
+import verifyToken from "../middleware/auth.middleware.js";
 
-router.get("/", getAllProducts);
+router.get("/", verifyToken, getAllProducts);
 
 export default router;
+
+// adminRoute
