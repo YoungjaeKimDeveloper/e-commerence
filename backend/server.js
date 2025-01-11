@@ -1,7 +1,7 @@
 // Library
 import express from "express";
 import dotenv from "dotenv";
-
+import cookieParser from "cookie-parser";
 // Setting
 dotenv.config({ path: "/Users/youngjaekim/Desktop/e-commerce/backend/.env" });
 // Routes
@@ -13,6 +13,7 @@ const PORT = process.env.PORT || 5009;
 const app = express();
 // SET THE MIDDLEWARE
 app.use(express.json());
+app.use(cookieParser());
 
 // Routess
 app.use("/auth", authRoutes);

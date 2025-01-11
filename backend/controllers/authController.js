@@ -1,7 +1,9 @@
 import { redis } from "../lib/redis.js";
-import User from "../models/User.model.js";
 import jwt from "jsonwebtoken";
-
+import dotenv from "dotenv";
+// Models
+import User from "../models/User.model.js";
+dotenv.config({ path: "/Users/youngjaekim/Desktop/e-commerce/backend/.env" });
 // generate Token
 const generateTokens = (userId) => {
   const accessToken = jwt.sign({ userId }, process.env.ACESS_TOKEN_SECRET, {
@@ -13,15 +15,7 @@ const generateTokens = (userId) => {
 
   return { accessToken, refreshToken };
 };
-// Only Refresh Token will be stored in Redis
-const storeRefreshToken = async (userId, refreshToken) => {
-  await redis.set(
-    `refresh_token:${userId}`,
-    refreshToken,
-    "EX",
-    7 * 24 * 60 * 60
-  );
-};
+
 // Store tokens in Cookies
 const setCookies = (res, accessToken, refreshToken) => {
   res.cookie("accessToken", accessToken, {
@@ -37,7 +31,15 @@ const setCookies = (res, accessToken, refreshToken) => {
     maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
   });
 };
-
+// Only Refresh Token will be stored in Reds
+const storeRefreshToken = async (userId, refreshToken) => {
+  await redis.set(
+    `refresh_token:${userId}`,
+    refreshToken,
+    "EX",
+    7 * 24 * 60 * 60
+  );
+};
 export const signup = async (req, res) => {
   try {
     // 유저가 보낸 정보
@@ -67,6 +69,7 @@ export const signup = async (req, res) => {
     const { accessToken, refreshToken } = generateTokens(newUser._id);
     // Store Token in UpStash
     await storeRefreshToken(newUser._id, refreshToken);
+    storeRefreshToken(newUser._id, refreshToken);
     setCookies(res, accessToken, refreshToken);
     return res.status(201).json({
       message: "NEW USER CREATED ✅",
@@ -107,9 +110,19 @@ export const login = async (req, res) => {
         .status(400)
         .json({ success: false, message: "PASSWORD IS NOT CREDENTIAL" });
     }
-    return res
-      .status(200)
-      .json({ success: true, message: `Welcome Back ${user.name}` });
+    const { accessToken, refreshToken } = generateTokens(user._id);
+    setCookies(res, accessToken, refreshToken);
+    await storeRefreshToken(user._id, refreshToken);
+    return res.status(200).json({
+      success: true,
+      message: `Welcome Back ${user.name}`,
+      user: {
+        id: user._id,
+        name: user.name,
+        emial: user.email,
+        role: user.role,
+      },
+    });
   } catch (error) {
     console.error(`FAIL TO LOGIN❌ : ${error.message}`);
     return res.status(500).json({
@@ -121,5 +134,72 @@ export const login = async (req, res) => {
 
 export const logout = async (req, res) => {
   try {
-  } catch (error) {}
+    const refreshToken = req.cookies.refreshToken;
+    if (refreshToken) {
+      const decode = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+      await redis.del(`refresh_token:${decode.userId}`);
+    }
+
+    res.clearCookie("accessToken");
+    res.clearCookie("refreshToken");
+    res.json({ message: "Logged out successfully ✅" });
+  } catch (error) {
+    console.error("FAILED TO LOGOUT", error.message);
+    res.status(500).json({ success: false, message: "Failed to logout ❌" });
+  }
 };
+// RefreshToekn -> Access Token
+export const refreshAccessToken = async (req, res) => {
+  try {
+    const refreshToken = req.cookies.refreshToken;
+    if (!refreshToken) {
+      return res
+        .status(400)
+        .json({ success: false, message: "NO RefreshToekn ❌" });
+    }
+    const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+    if (!decoded) {
+      return res
+        .status(400)
+        .json({ success: false, message: "INVALID FRESH TOKEN" });
+    }
+
+    const storedToken = await redis.get(`refresh_token:${decoded.userId}`);
+
+    if (!storedToken) {
+      return res
+        .status(400)
+        .json({ success: false, message: "CANNOT FIND THE VALID TOKEN" });
+    }
+    if (storedToken !== refreshToken) {
+      return res
+        .status(401)
+        .json({ success: false, message: "INVALID REFRESH TOKEN" });
+    }
+    const accessToken = jwt.sign(
+      { userId: decoded.userId },
+      process.env.ACESS_TOKEN_SECRET,
+      { expiresIn: "15m" }
+    );
+    res.cookie("accessToken", accessToken, {
+      httpOnly: true, // prevent XSS attacks, cross site scripting attack
+      secure: process.env.NODE_ENV == "production",
+      sameStie: "strict", //prevents CSRF attack, cross-site request forgery
+      maxAge: 15 * 60 * 1000, // 15 minutes
+    });
+    return res
+      .status(200)
+      .json({ success: true, message: "Token refreshed successfully" });
+  } catch (error) {
+    console.error("ERROR IN RefreshToken controller", error.message);
+    res
+      .status(500)
+      .json({ success: false, message: `Server ERROR ${error.message}` });
+  }
+};
+// TODO
+// export const getProfile = async (req, res) => {
+//   try {
+
+//   } catch (error) {}
+// };
