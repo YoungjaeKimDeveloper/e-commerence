@@ -122,12 +122,10 @@ export const getRecommendedProcuts = async (req, res) => {
         },
       },
     ]);
-    return res
-      .status(200)
-      .json({
-        message: "FETCHED THE Reconnebded products successfully ✅",
-        products: products,
-      });
+    return res.status(200).json({
+      message: "FETCHED THE Reconnebded products successfully ✅",
+      products: products,
+    });
   } catch (error) {
     console.error("Failed to fetch the recommended Items", error.message);
     return res.status(500).json({
@@ -136,3 +134,61 @@ export const getRecommendedProcuts = async (req, res) => {
     });
   }
 };
+
+export const getProductsByCategory = async (req, res) => {
+  try {
+    const { category } = req.params;
+    const products = await Product.find({ category: category });
+    return res.status(200).json({
+      success: true,
+      message: "Get Products Successfully ✅",
+      products: products,
+    });
+  } catch (error) {
+    console.error("Failed to get product", error.message);
+    return res.status(500).json({
+      success: false,
+      message: `Failed to get products ${error.message}`,
+    });
+  }
+};
+export const toggleFeaturedProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const product = await Product.findById(id);
+    if (!product) {
+      return res
+        .status(400)
+        .json({ success: false, message: "CANNOT FIND THE PRODUCT" });
+    }
+    product.isFeatured = !product.isFeatured;
+    const updatedProduct = await product.save();
+    await updateFeaturedProductCache();
+    return res
+      .status(200)
+      .json({ success: true, message: "Success to update Item Feature" });
+  } catch (error) {
+    console.error("Error in toggleFeaturedProduct controller", error.message);
+    return res.status(500).json({
+      success: false,
+      message: `Server error toggleFeaturedProduct❌ :${error.message}`,
+    });
+  }
+};
+
+async function updateFeaturedProductCache() {
+  try {
+    const featuredProducts = await Product.find({ isFeatured: true }).lean();
+    if (!featuredProducts) {
+      return res.status(404).json({
+        success: false,
+        message: "NO ITEM in updateFeaturedProductCache ❌",
+      });
+    }
+    // Redis Store the Data as a string type {"name":"Jeki"}
+    await redis.set("featured_products", JSON.stringify(featuredProducts));
+    console.info("Cached Updated : updateFeaturedProductCache ✅");
+  } catch (error) {
+    console.error("error in updateFeaturedProductCache ❌", error.message);
+  }
+}

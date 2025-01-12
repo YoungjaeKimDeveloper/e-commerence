@@ -7,13 +7,18 @@ import {
   createProduct,
   deleteProduct,
   getRecommendedProcuts,
+  getProductsByCategory,
+  toggleFeaturedProduct,
 } from "../controllers/product.controller.js";
 import { verifyToken, adminRoute } from "../middleware/auth.middleware.js";
 
-router.get("/", verifyToken, adminRoute, getAllProducts);
+// General Routes
 router.get("/featured", getFeaturedProducts);
+router.get("/category/:category", getProductsByCategory);
 router.get("/recommendations", getRecommendedProcuts);
-// Create the Product
+// Admin Routes
+router.get("/", verifyToken, adminRoute, getAllProducts);
 router.post("/", verifyToken, adminRoute, createProduct);
+router.patch("/:id", verifyToken, adminRoute, toggleFeaturedProduct);
 router.delete("/:id", verifyToken, adminRoute, deleteProduct);
 export default router;
