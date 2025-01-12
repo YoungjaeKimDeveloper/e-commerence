@@ -23,25 +23,24 @@ const UserSchema = new mongoose.Schema(
       enum: ["customer", "admin"],
       default: "customer",
     },
-    // CART SETTING
+    // CART Object
     cartItems: [
+      // {product:product,quantity:quanttiy}
       {
-        quantity: {
-          type: Number,
-          default: 1,
-        },
         product: {
           type: mongoose.Schema.Types.ObjectId,
           ref: "Product",
         },
+        quantity: {
+          type: Number,
+          default: 1,
+        },
       },
     ],
-    // Setting the Role
-    // Set only two roles
   },
   { timestamps: true }
 );
-// Pre-Save
+// Pre-Hooks
 // 비밀번호 bcrpt 해주기
 UserSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
@@ -52,11 +51,11 @@ UserSchema.pre("save", async function (next) {
     next(error);
   }
 });
-// 인스턴스별 메세지 추가해주기
+// Instance method - comparePassword
 UserSchema.methods.comparePassword = function (password) {
   return bcrypt.compare(password, this.password);
 };
-// 민감한 정보 제거
+// Instance method - extra Secure
 UserSchema.methods.toJson = function () {
   const user = this;
   const userObject = user.toObject();
@@ -67,6 +66,5 @@ UserSchema.methods.toJson = function () {
 };
 
 const User = mongoose.model("User", UserSchema);
-// Pre-save hook to save hash password before saving to database
 
 export default User;

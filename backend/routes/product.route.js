@@ -12,7 +12,7 @@ import {
 } from "../controllers/product.controller.js";
 import { verifyToken, adminRoute } from "../middleware/auth.middleware.js";
 
-// General Routes
+// General Routes - without Verifying user
 router.get("/featured", getFeaturedProducts);
 router.get("/category/:category", getProductsByCategory);
 router.get("/recommendations", getRecommendedProcuts);

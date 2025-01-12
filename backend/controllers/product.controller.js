@@ -2,21 +2,10 @@ import { redis } from "../lib/redis.js";
 import Product from "../models/Product.model.js";
 import cloudinary from "../lib/cloudinary.config.js";
 
-export const getAllProducts = async (req, res) => {
-  try {
-    const products = await Product.find({}); // find all Products
-    return res.status(200).json({ success: true, products: products });
-  } catch (error) {
-    console.error("Failed to load products ❌, ", error.message);
-    return res.status(500).json({
-      success: false,
-      message: `Failed to load products: ${error.message}`,
-    });
-  }
-};
-
+// General Route
 export const getFeaturedProducts = async (req, res) => {
   try {
+    // Data from redis is just string format.
     let featuredProducts = await redis.get("featured_products");
     if (featuredProducts) {
       return res.status(200).json({
@@ -24,15 +13,20 @@ export const getFeaturedProducts = async (req, res) => {
         success: true,
         featuredProducts: featuredProducts,
       });
+    } else {
+      // if there is no feature product in redis, fetch from mongodb
+      featuredProducts = await Product.find({ isFeatured: true }).lean();
     }
-    // if there is no feature product in redis, fetch from mongodb
-    featuredProducts = await Product.find({ isFeatured: true }).lean();
 
     if (!featuredProducts) {
-      return res.status(404).json({ message: "No featured products found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "No featured products found" });
     }
+
     // Redis : stroe the data string format
     await redis.set("featured_products", JSON.stringify(featuredProducts));
+
     return res
       .status(200)
       .json({ success: true, featuredProducts: featuredProducts });
@@ -45,6 +39,68 @@ export const getFeaturedProducts = async (req, res) => {
   }
 };
 
+// General - Route
+export const getRecommendedProcuts = async (req, res) => {
+  try {
+    const recommendedProducts = await Product.aggregate([
+      {
+        $sample: { size: 3 },
+      },
+      {
+        $project: {
+          _id: 1,
+          name: 1,
+          description: 1,
+          image: 1,
+          price: 1,
+        },
+      },
+    ]);
+    return res.status(200).json({
+      message: "FETCHED THE Reconnebded recommendedProducts successfully ✅",
+      recommendedProducts: recommendedProducts,
+    });
+  } catch (error) {
+    console.error("Failed to fetch the recommended Items", error.message);
+    return res.status(500).json({
+      success: false,
+      message: `Failed to fetch the items ${error.message}`,
+    });
+  }
+};
+// General - Route
+export const getProductsByCategory = async (req, res) => {
+  try {
+    const { category } = req.params;
+    const products = await Product.find({ category: category });
+    return res.status(200).json({
+      success: true,
+      message: "Get Products Successfully ✅",
+      products: products,
+    });
+  } catch (error) {
+    console.error("Failed to get product", error.message);
+    return res.status(500).json({
+      success: false,
+      message: `Failed to get products ${error.message}`,
+    });
+  }
+};
+
+// Admin - Route
+export const getAllProducts = async (req, res) => {
+  try {
+    const products = await Product.find({}); // find all Products
+    return res.status(200).json({ success: true, products: products });
+  } catch (error) {
+    console.error("Failed to load products ❌, ", error.message);
+    return res.status(500).json({
+      success: false,
+      message: `Failed to load products: ${error.message}`,
+    });
+  }
+};
+// Admin - Route
 export const createProduct = async (req, res) => {
   try {
     let cloudinaryResponse = null;
@@ -71,7 +127,7 @@ export const createProduct = async (req, res) => {
       .json({ message: "Server Error", error: error.message });
   }
 };
-
+// Admin Route
 export const deleteProduct = async (req, res) => {
   try {
     const { id } = req.params;
@@ -94,9 +150,9 @@ export const deleteProduct = async (req, res) => {
         );
       }
     }
-    // delete Item Image from Cloudinary
+    // Delete the Item from the DB
     await Product.findByIdAndDelete(id);
-    return res.status(200).json({ success: false, message: "Item deleted ✅" });
+    return res.status(200).json({ success: true, message: "Item deleted ✅" });
   } catch (error) {
     console.error("FAILED TO DELETE ITEM", error.message);
     return res.status(500).json({
@@ -106,52 +162,7 @@ export const deleteProduct = async (req, res) => {
   }
 };
 
-export const getRecommendedProcuts = async (req, res) => {
-  try {
-    const products = await Product.aggregate([
-      {
-        $sample: { size: 3 },
-      },
-      {
-        $project: {
-          _id: 1,
-          name: 1,
-          description: 1,
-          image: 1,
-          price: 1,
-        },
-      },
-    ]);
-    return res.status(200).json({
-      message: "FETCHED THE Reconnebded products successfully ✅",
-      products: products,
-    });
-  } catch (error) {
-    console.error("Failed to fetch the recommended Items", error.message);
-    return res.status(500).json({
-      success: false,
-      message: `Failed to fetch the items ${error.message}`,
-    });
-  }
-};
-
-export const getProductsByCategory = async (req, res) => {
-  try {
-    const { category } = req.params;
-    const products = await Product.find({ category: category });
-    return res.status(200).json({
-      success: true,
-      message: "Get Products Successfully ✅",
-      products: products,
-    });
-  } catch (error) {
-    console.error("Failed to get product", error.message);
-    return res.status(500).json({
-      success: false,
-      message: `Failed to get products ${error.message}`,
-    });
-  }
-};
+// Admin - Route
 export const toggleFeaturedProduct = async (req, res) => {
   try {
     const { id } = req.params;
@@ -162,7 +173,7 @@ export const toggleFeaturedProduct = async (req, res) => {
         .json({ success: false, message: "CANNOT FIND THE PRODUCT" });
     }
     product.isFeatured = !product.isFeatured;
-    const updatedProduct = await product.save();
+    await product.save();
     await updateFeaturedProductCache();
     return res
       .status(200)
@@ -176,6 +187,7 @@ export const toggleFeaturedProduct = async (req, res) => {
   }
 };
 
+// Support Function
 async function updateFeaturedProductCache() {
   try {
     const featuredProducts = await Product.find({ isFeatured: true }).lean();

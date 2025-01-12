@@ -1,14 +1,15 @@
-import { redis } from "../lib/redis.js";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 // Models
 import User from "../models/User.model.js";
+import { redis } from "../lib/redis.js";
 dotenv.config({ path: "/Users/youngjaekim/Desktop/e-commerce/backend/.env" });
-// generate Token
+// generate Token - ACESS_TOEKN Security Key
 const generateTokens = (userId) => {
   const accessToken = jwt.sign({ userId }, process.env.ACESS_TOKEN_SECRET, {
     expiresIn: "15m",
   });
+  // For Local Machine Refresh_TOKEN Security Key
   const refreshToken = jwt.sign({ userId }, process.env.REFRESH_TOKEN_SECRET, {
     expiresIn: "7d",
   });
@@ -31,7 +32,8 @@ const setCookies = (res, accessToken, refreshToken) => {
     maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
   });
 };
-// Only Refresh Token will be stored in Reds
+// Only Refresh Token will be stored in upstash(Redis Grammar)
+
 const storeRefreshToken = async (userId, refreshToken) => {
   await redis.set(
     `refresh_token:${userId}`,
@@ -40,6 +42,7 @@ const storeRefreshToken = async (userId, refreshToken) => {
     7 * 24 * 60 * 60
   );
 };
+
 export const signup = async (req, res) => {
   try {
     // 유저가 보낸 정보

@@ -34,7 +34,7 @@ export const adminRoute = async (req, res, next) => {
     if (!user || user.role !== "admin") {
       return res
         .status(403)
-        .json({ success: false, message: "FAIL TO FIND THE USER❌" });
+        .json({ success: false, message: "USER IS NOT AN ADMIN ❌" });
     }
     next();
   } catch (error) {
