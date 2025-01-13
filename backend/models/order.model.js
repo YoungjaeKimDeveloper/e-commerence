@@ -7,6 +7,10 @@ const orderSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    stripeSessionId: {
+      type: String,
+      unique: true,
+    },
     products: [
       {
         product: {
@@ -29,10 +33,6 @@ const orderSchema = new mongoose.Schema(
       type: Number,
       required: true,
       min: 0,
-    },
-    stripeSessionId: {
-      type: String,
-      unique: true,
     },
   },
   {

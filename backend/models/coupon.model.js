@@ -2,6 +2,12 @@ import mongoose from "mongoose";
 
 const couponSchema = new mongoose.Schema(
   {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      unique: true,
+    },
     code: {
       type: String,
       required: true,
@@ -20,12 +26,6 @@ const couponSchema = new mongoose.Schema(
     isActive: {
       type: Boolean,
       default: true,
-    },
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-      unique: true,
     },
   },
   {
