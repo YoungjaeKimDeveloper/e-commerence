@@ -41,11 +41,9 @@ export const validateCoupon = async (req, res) => {
       discountPercentage: coupon.discountPercentage,
     });
   } catch (error) {
-    return res
-      .status(500)
-      .json({
-        success: false,
-        message: `server error in validateCoupon : ${error.message} `,
-      });
+    return res.status(500).json({
+      success: false,
+      message: `server error in validateCoupon : ${error.message} `,
+    });
   }
 };
