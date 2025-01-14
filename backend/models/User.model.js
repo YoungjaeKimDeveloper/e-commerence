@@ -56,14 +56,14 @@ UserSchema.methods.comparePassword = function (password) {
   return bcrypt.compare(password, this.password);
 };
 // Instance method - extra Secure
-UserSchema.methods.toJson = function () {
-  const user = this;
-  const userObject = user.toObject();
+// UserSchema.methods.toJson = function () {
+//   const user = this;
+//   const userObject = user.toObject();
 
-  // 민감한 데이터 제거
-  delete userObject.password;
-  return userObject;
-};
+//   // 민감한 데이터 제거
+//   delete userObject.password;
+//   return userObject;
+// };
 
 const User = mongoose.model("User", UserSchema);
 

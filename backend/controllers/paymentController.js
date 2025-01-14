@@ -6,6 +6,8 @@ import Order from "../models/order.model.js";
 export const createCheckoutSession = async (req, res) => {
   try {
     const { products, couponCode } = req.body;
+    let totalAmount = 0;
+    let coupon = null;
     // 아이템이 Array형식이 아닌경우[Error Handling]
     if (!Array.isArray(products) || products.length === 0) {
       return res
@@ -13,7 +15,6 @@ export const createCheckoutSession = async (req, res) => {
         .json({ success: false, message: "IVALID or EMPTY products array" });
     }
     // 최종상품 가격
-    let totalAmount = 0;
 
     const lineItems = products.map((product) => {
       const amount = Math.round(product.price * 100); // stripe watns you to send in the format of cents
@@ -30,11 +31,10 @@ export const createCheckoutSession = async (req, res) => {
       };
     });
 
-    let coupon = null;
     if (couponCode) {
       coupon = await Coupon.findOne({
-        code: couponCode,
         userId: req.user._id,
+        code: couponCode,
         isActive: true,
       });
       if (coupon) {
@@ -156,4 +156,3 @@ export const checkoutSuccess = async (req, res) => {
     });
   }
 };
- 

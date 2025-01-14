@@ -166,6 +166,7 @@ export const refreshAccessToken = async (req, res) => {
         .json({ success: false, message: "INVALID FRESH TOKEN" });
     }
 
+    // stored Token from Redis
     const storedToken = await redis.get(`refresh_token:${decoded.userId}`);
 
     if (!storedToken) {
